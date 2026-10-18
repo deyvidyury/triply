@@ -1,18 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+import * as Sentry from '@sentry/react-native';
+import { Stack } from 'expo-router';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  sendDefaultPii: true,
+  // Capture 100% of transactions in development, sample in production.
+  tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+  // Send logs to Sentry alongside errors.
+  enableLogs: true,
+  // Record 10% of sessions and 100% of sessions with errors.
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+    Sentry.feedbackIntegration(),
+  ],
+});
 
-SplashScreen.preventAutoHideAsync();
+function getPublishableKey() {
+  const key = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!key) {
+    throw new Error('Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to your .env file');
+  }
+  return key;
+}
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+const publishableKey = getPublishableKey();
+
+function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </ClerkProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
